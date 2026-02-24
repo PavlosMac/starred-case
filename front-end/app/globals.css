@@ -1,0 +1,447 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   STELLAR MOMENTUM - Avant-garde Cosmic Recruitment Design System
+   Keywords: avant-garde, stars, high-tempo, recruitment
+   ========================================================================== */
+
+@theme {
+  /* -------------------------------------------------------------------------
+     COSMIC COLOR PALETTE
+     Deep space blacks with electric accents and warm star golds
+     ------------------------------------------------------------------------- */
+
+  /* Space - Deep backgrounds */
+  --color-space-void: #050508;
+  --color-space-deep: #0A0A0F;
+  --color-space-surface: #12121A;
+  --color-space-elevated: #1A1A24;
+  --color-space-border: #2A2A3A;
+
+  /* Stellar - Electric cyan/teal energy */
+  --color-stellar-glow: #00F5D4;
+  --color-stellar-bright: #00D4B8;
+  --color-stellar-medium: #00B89C;
+  --color-stellar-dim: #008F79;
+  --color-stellar-subtle: rgba(0, 245, 212, 0.15);
+  --color-stellar-ghost: rgba(0, 245, 212, 0.08);
+
+  /* Nova - Warm gold stars */
+  --color-nova-bright: #FFD700;
+  --color-nova-warm: #FFC300;
+  --color-nova-medium: #E5A800;
+  --color-nova-dim: #B38600;
+  --color-nova-subtle: rgba(255, 215, 0, 0.15);
+
+  /* Nebula - Electric violet accents */
+  --color-nebula-bright: #B388FF;
+  --color-nebula-medium: #9C6AFF;
+  --color-nebula-dim: #7C4DFF;
+  --color-nebula-subtle: rgba(179, 136, 255, 0.15);
+
+  /* Cosmos - Text hierarchy */
+  --color-cosmos-100: #FFFFFF;
+  --color-cosmos-90: rgba(255, 255, 255, 0.92);
+  --color-cosmos-80: rgba(255, 255, 255, 0.80);
+  --color-cosmos-60: rgba(255, 255, 255, 0.60);
+  --color-cosmos-40: rgba(255, 255, 255, 0.40);
+  --color-cosmos-20: rgba(255, 255, 255, 0.20);
+
+  /* Status colors */
+  --color-status-success: #00E676;
+  --color-status-error: #FF5252;
+  --color-status-warning: #FFAB40;
+  --color-status-info: #40C4FF;
+
+  /* Legacy brand mappings for compatibility */
+  --color-brand-base-10: var(--color-space-surface);
+  --color-brand-base-20: var(--color-space-elevated);
+  --color-brand-base-30: var(--color-space-border);
+  --color-brand-base-40: var(--color-cosmos-20);
+  --color-brand-base-50: var(--color-cosmos-40);
+  --color-brand-base-60: var(--color-cosmos-60);
+  --color-brand-base-70: var(--color-cosmos-80);
+  --color-brand-base-80: var(--color-cosmos-90);
+  --color-brand-base-90: var(--color-cosmos-100);
+  --color-brand-base-100: var(--color-cosmos-100);
+
+  --color-brand-primary-10: var(--color-stellar-ghost);
+  --color-brand-primary-20: var(--color-stellar-subtle);
+  --color-brand-primary-30: var(--color-stellar-dim);
+  --color-brand-primary-40: var(--color-stellar-medium);
+  --color-brand-primary-50: var(--color-stellar-bright);
+  --color-brand-primary-60: var(--color-stellar-glow);
+  --color-brand-primary-70: var(--color-stellar-glow);
+  --color-brand-primary-80: var(--color-space-deep);
+  --color-brand-primary-90: var(--color-space-void);
+  --color-brand-primary-100: var(--color-space-void);
+
+  --color-brand-success-10: rgba(0, 230, 118, 0.1);
+  --color-brand-success-40: var(--color-status-success);
+  --color-brand-success-50: var(--color-status-success);
+
+  --color-brand-error-30: rgba(255, 82, 82, 0.3);
+  --color-brand-error-60: var(--color-status-error);
+  --color-brand-error-70: #D32F2F;
+
+  --color-brand-info-10: rgba(64, 196, 255, 0.1);
+  --color-brand-info-20: rgba(64, 196, 255, 0.2);
+  --color-brand-info-30: rgba(64, 196, 255, 0.3);
+  --color-brand-info-60: var(--color-status-info);
+  --color-brand-info-70: #0091EA;
+  --color-brand-info-90: #01579B;
+
+  /* Interactive backgrounds */
+  --color-background-interactive-disabled: var(--color-space-border);
+  --color-background-interactive-primary: var(--color-stellar-bright);
+  --color-background-interactive-primary-hovered: var(--color-stellar-glow);
+  --color-background-interactive-secondary: var(--color-space-elevated);
+  --color-background-interactive-secondary-hovered: var(--color-space-border);
+
+  /* Interactive foregrounds */
+  --color-foreground-interactive-disabled: var(--color-cosmos-40);
+  --color-foreground-interactive-primary: var(--color-space-void);
+  --color-foreground-interactive-primary-hovered: var(--color-space-void);
+  --color-foreground-interactive-secondary: var(--color-cosmos-90);
+  --color-foreground-interactive-secondary-hovered: var(--color-cosmos-100);
+
+  /* -------------------------------------------------------------------------
+     TYPOGRAPHY - Syne for display, DM Sans for body
+     ------------------------------------------------------------------------- */
+  --font-family-display: 'Syne', system-ui, sans-serif;
+  --font-family-sans: 'DM Sans', system-ui, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+
+  /* -------------------------------------------------------------------------
+     ANIMATIONS - High-tempo, energetic
+     ------------------------------------------------------------------------- */
+  --ease-stellar: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+}
+
+/* ==========================================================================
+   BASE STYLES
+   ========================================================================== */
+
+body {
+  font-family: var(--font-family-sans);
+  background: var(--color-space-deep);
+  color: var(--color-cosmos-90);
+  min-height: 100vh;
+}
+
+/* Cosmic background with subtle stars */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(0, 245, 212, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(179, 136, 255, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(255, 215, 0, 0.02) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Subtle noise texture overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.015;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ==========================================================================
+   KEYFRAME ANIMATIONS
+   ========================================================================== */
+
+@keyframes stellar-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes star-twinkle {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 2px var(--color-nova-bright));
+  }
+  50% {
+    transform: scale(1.2) rotate(15deg);
+    filter: drop-shadow(0 0 8px var(--color-nova-bright)) drop-shadow(0 0 20px var(--color-nova-warm));
+  }
+}
+
+@keyframes star-burst {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 245, 212, 0.3), 0 0 40px rgba(0, 245, 212, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(0, 245, 212, 0.5), 0 0 60px rgba(0, 245, 212, 0.2);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes spin-fast {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes orbit {
+  from { transform: rotate(0deg) translateX(4px) rotate(0deg); }
+  to { transform: rotate(360deg) translateX(4px) rotate(-360deg); }
+}
+
+/* ==========================================================================
+   UTILITY CLASSES
+   ========================================================================== */
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Stellar glow effect */
+.stellar-glow {
+  box-shadow:
+    0 0 20px rgba(0, 245, 212, 0.3),
+    0 0 40px rgba(0, 245, 212, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.stellar-glow-intense {
+  box-shadow:
+    0 0 30px rgba(0, 245, 212, 0.5),
+    0 0 60px rgba(0, 245, 212, 0.2),
+    0 0 100px rgba(0, 245, 212, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Nova (gold star) glow */
+.nova-glow {
+  box-shadow:
+    0 0 15px rgba(255, 215, 0, 0.4),
+    0 0 30px rgba(255, 215, 0, 0.2);
+}
+
+/* Glass morphism effect */
+.glass {
+  background: rgba(18, 18, 26, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-elevated {
+  background: rgba(26, 26, 36, 0.9);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Diagonal cut effect */
+.diagonal-cut {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+}
+
+/* Shimmer loading effect */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Stagger animation delays */
+.stagger-1 { animation-delay: 50ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 150ms; }
+.stagger-4 { animation-delay: 200ms; }
+.stagger-5 { animation-delay: 250ms; }
+
+/* Animation classes */
+.animate-stellar-pulse {
+  animation: stellar-pulse 2s ease-in-out infinite;
+}
+
+.animate-star-twinkle {
+  animation: star-twinkle 1.5s ease-in-out infinite;
+}
+
+.animate-star-burst {
+  animation: star-burst 0.4s var(--ease-bounce) forwards;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s var(--ease-stellar) forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+.animate-spin-fast {
+  animation: spin-fast 0.8s linear infinite;
+}
+
+.animate-orbit {
+  animation: orbit 3s linear infinite;
+}
+
+/* Focus ring for accessibility */
+.focus-stellar:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--color-space-deep),
+    0 0 0 4px var(--color-stellar-glow),
+    0 0 20px rgba(0, 245, 212, 0.3);
+}
+
+/* ==========================================================================
+   BUTTON VARIANTS (for Tailwind classes)
+   ========================================================================== */
+
+/* Primary stellar button glow on hover */
+.btn-stellar-glow {
+  transition: all var(--duration-fast) var(--ease-stellar);
+}
+
+.btn-stellar-glow:hover:not(:disabled) {
+  box-shadow:
+    0 0 25px rgba(0, 245, 212, 0.4),
+    0 0 50px rgba(0, 245, 212, 0.15);
+  transform: translateY(-1px);
+}
+
+.btn-stellar-glow:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* ==========================================================================
+   CARD EFFECTS
+   ========================================================================== */
+
+.card-cosmic {
+  background: linear-gradient(
+    135deg,
+    rgba(18, 18, 26, 0.95) 0%,
+    rgba(26, 26, 36, 0.9) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all var(--duration-normal) var(--ease-stellar);
+}
+
+.card-cosmic:hover {
+  border-color: rgba(0, 245, 212, 0.2);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(0, 245, 212, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transform: translateY(-2px);
+}
+
+/* ==========================================================================
+   INPUT EFFECTS
+   ========================================================================== */
+
+.input-cosmic {
+  background: var(--color-space-surface);
+  border: 1px solid var(--color-space-border);
+  transition: all var(--duration-fast) var(--ease-stellar);
+}
+
+.input-cosmic:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.input-cosmic:focus {
+  border-color: var(--color-stellar-bright);
+  box-shadow:
+    0 0 0 3px rgba(0, 245, 212, 0.1),
+    0 0 20px rgba(0, 245, 212, 0.1);
+}
+
+/* ==========================================================================
+   SCROLLBAR STYLING
+   ========================================================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-space-deep);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-space-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-cosmos-40);
+}
+
+/* ==========================================================================
+   SELECTION STYLING
+   ========================================================================== */
+
+::selection {
+  background: rgba(0, 245, 212, 0.3);
+  color: var(--color-cosmos-100);
+}

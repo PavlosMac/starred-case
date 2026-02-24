@@ -1,0 +1,42 @@
+{
+  "name": "starred-case",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "server:start": "tsx ./backend/bin/www.ts",
+    "server:dev": "tsx --watch ./backend/bin/www.ts",
+    "db:reset": "node ./db/seed.js",
+    "client:dev": "npm run --prefix front-end dev",
+    "client:build": "npm run --prefix front-end build",
+    "client:start": "npm run --prefix front-end start",
+    "client:lint": "npm run --prefix front-end lint",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "docker": "docker-compose up --build"
+  },
+  "dependencies": {
+    "cookie-parser": "~1.4.4",
+    "cors": "^2.8.5",
+    "debug": "~2.6.9",
+    "express": "^4.21.2",
+    "express-basic-auth": "^1.2.1",
+    "http-errors": "~1.6.3",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@faker-js/faker": "^8.4.1",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.3.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.0.0",
+    "prettier": "^3.2.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
