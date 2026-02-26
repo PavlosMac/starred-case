@@ -1,5 +1,7 @@
 'use server'
 
+import type { ActionResult } from '../types'
+
 export interface User {
   id: number
   firstName: string
@@ -9,7 +11,7 @@ export interface User {
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001'
 
-export async function getUsers(): Promise<User[]> {
+export async function getUsers(): Promise<ActionResult<User[]>> {
   try {
     const response = await fetch(`${BACKEND_URL}/users`, {
       cache: 'no-store',
@@ -17,13 +19,19 @@ export async function getUsers(): Promise<User[]> {
 
     if (!response.ok) {
       console.error('Failed to fetch users:', response.statusText)
-      return []
+      return {
+        success: false,
+        error: { message: 'Failed to load users.', code: 'fetch_error' },
+      }
     }
 
     const data = await response.json()
-    return data.data || []
+    return { success: true, data: data.data || [] }
   } catch (error) {
     console.error('Failed to fetch users:', error)
-    return []
+    return {
+      success: false,
+      error: { message: 'Network error. Please check your connection.', code: 'network_error' },
+    }
   }
 }

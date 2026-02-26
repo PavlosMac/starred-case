@@ -20,6 +20,7 @@ import {
   SearchIcon,
   ClearIcon,
   Spinner,
+  ErrorAlert,
 } from './components'
 
 const MIN_SEARCH_LENGTH = 2
@@ -34,6 +35,7 @@ interface JobsPageProps {
   initialFavorites: number[]
   users: User[]
   initialUserId: number
+  initialError?: string | null
 }
 
 export function JobsPage({
@@ -42,6 +44,7 @@ export function JobsPage({
   initialFavorites,
   users,
   initialUserId,
+  initialError = null,
 }: JobsPageProps) {
   const [jobs, setJobs] = useState<Job[]>(initialJobs)
   const [pagination, setPagination] = useState(initialPagination)
@@ -54,7 +57,7 @@ export function JobsPage({
   const [isSearching, setIsSearching] = useState(false)
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(initialError)
 
   // Cache for restoring paginated view after favorites mode
   const cachedPaginatedJobs = useRef<{
@@ -75,9 +78,14 @@ export function JobsPage({
         setIsSearchMode(false)
         setIsSearching(false)
         startTransition(async () => {
-          const response = await getJobs(1)
-          setJobs(response.jobs)
-          setPagination(response.pagination)
+          const result = await getJobs(1)
+          if (result.success) {
+            setJobs(result.data.jobs)
+            setPagination(result.data.pagination)
+            setError(null)
+          } else {
+            setError(result.error.message)
+          }
         })
       }
       return
@@ -94,15 +102,21 @@ export function JobsPage({
     setIsSearching(true)
 
     const performSearch = async () => {
-      const results = await searchJobs(trimmedQuery)
+      const result = await searchJobs(trimmedQuery)
 
       // Ignore stale results if user typed something else
       if (latestSearchRef.current !== trimmedQuery) {
         return
       }
 
-      setJobs(results)
-      setPagination({ currentPage: 1, totalPages: 1 })
+      if (result.success) {
+        setJobs(result.data)
+        setPagination({ currentPage: 1, totalPages: 1 })
+        setError(null)
+      } else {
+        setError(result.error.message)
+        setJobs([])
+      }
       setIsSearching(false)
     }
 
@@ -122,9 +136,14 @@ export function JobsPage({
     setIsSearching(false)
     latestSearchRef.current = ''
     startTransition(async () => {
-      const response = await getJobs(1)
-      setJobs(response.jobs)
-      setPagination(response.pagination)
+      const result = await getJobs(1)
+      if (result.success) {
+        setJobs(result.data.jobs)
+        setPagination(result.data.pagination)
+        setError(null)
+      } else {
+        setError(result.error.message)
+      }
     })
   }, [])
 
@@ -133,9 +152,13 @@ export function JobsPage({
       if (isSearchMode || showFavoritesOnly) return
 
       startTransition(async () => {
-        const response = await getJobs(page)
-        setJobs(response.jobs)
-        setPagination(response.pagination)
+        const result = await getJobs(page)
+        if (result.success) {
+          setJobs(result.data.jobs)
+          setPagination(result.data.pagination)
+        } else {
+          setError(result.error.message)
+        }
       })
     },
     [isSearchMode, showFavoritesOnly]
@@ -159,9 +182,13 @@ export function JobsPage({
             setPagination({ currentPage: 1, totalPages: 1 })
             return
           }
-          const favoriteJobs = await getJobsByIds(favoriteIds)
-          setJobs(favoriteJobs)
-          setPagination({ currentPage: 1, totalPages: 1 })
+          const result = await getJobsByIds(favoriteIds)
+          if (result.success) {
+            setJobs(result.data)
+            setPagination({ currentPage: 1, totalPages: 1 })
+          } else {
+            setError(result.error.message)
+          }
         })
       } else {
         // Restore cached paginated state or fetch page 1
@@ -170,9 +197,13 @@ export function JobsPage({
           setPagination(cachedPaginatedJobs.current.pagination)
         } else {
           startTransition(async () => {
-            const response = await getJobs(1)
-            setJobs(response.jobs)
-            setPagination(response.pagination)
+            const result = await getJobs(1)
+            if (result.success) {
+              setJobs(result.data.jobs)
+              setPagination(result.data.pagination)
+            } else {
+              setError(result.error.message)
+            }
           })
         }
       }
@@ -184,6 +215,7 @@ export function JobsPage({
     async (jobId: number) => {
       const isFavorited = favorites.has(jobId)
 
+      // Optimistic update
       setFavorites((prev) => {
         const next = new Set(prev)
         if (isFavorited) {
@@ -197,6 +229,7 @@ export function JobsPage({
       const result = await toggleFavorite(jobId, isFavorited, userId)
 
       if (!result.success) {
+        // Rollback optimistic update
         setFavorites((prev) => {
           const next = new Set(prev)
           if (isFavorited) {
@@ -206,26 +239,39 @@ export function JobsPage({
           }
           return next
         })
-        setError(result.error || 'Failed to update favorite')
+        setError(result.error.message)
       }
     },
     [favorites, userId]
   )
 
-  const handleUserChange = useCallback(
-    (newUserId: number) => {
-      setUserId(newUserId)
-      setShowFavoritesOnly(false)
-      cachedPaginatedJobs.current = null
+  const handleUserChange = useCallback((newUserId: number) => {
+    setUserId(newUserId)
+    setShowFavoritesOnly(false)
+    cachedPaginatedJobs.current = null
 
-      // Fetch favorites for the new user
-      startTransition(async () => {
-        const newFavorites = await getFavorites(newUserId)
-        setFavorites(new Set(newFavorites))
-      })
-    },
-    []
-  )
+    // Fetch favorites for the new user and reset to paginated jobs view
+    startTransition(async () => {
+      const [favoritesResult, jobsResult] = await Promise.all([
+        getFavorites(newUserId),
+        getJobs(1),
+      ])
+
+      if (favoritesResult.success) {
+        setFavorites(new Set(favoritesResult.data))
+      } else {
+        setError(favoritesResult.error.message)
+        setFavorites(new Set())
+      }
+
+      if (jobsResult.success) {
+        setJobs(jobsResult.data.jobs)
+        setPagination(jobsResult.data.pagination)
+      } else {
+        setError(jobsResult.error.message)
+      }
+    })
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -287,15 +333,11 @@ export function JobsPage({
       )}
 
       {error && (
-        <div className="text-center py-2">
-          <p className="text-brand-error-60 text-sm">{error}</p>
-          <button
-            className="text-brand-primary-60 hover:underline text-sm mt-1"
-            onClick={() => setError(null)}
-          >
-            Dismiss
-          </button>
-        </div>
+        <ErrorAlert
+          message={error}
+          onDismiss={() => setError(null)}
+          variant="banner"
+        />
       )}
 
       {isPending && (

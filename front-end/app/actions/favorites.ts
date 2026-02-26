@@ -1,11 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import type { FavoritesResponse } from '../types'
+import type { ActionResult } from '../types'
+import { parseApiError } from '../lib/errorUtils'
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001'
 
-export async function getFavorites(userId: number = 1): Promise<number[]> {
+export async function getFavorites(userId: number = 1): Promise<ActionResult<number[]>> {
   try {
     const response = await fetch(`${BACKEND_URL}/api/favorites`, {
       cache: 'no-store',
@@ -15,22 +16,26 @@ export async function getFavorites(userId: number = 1): Promise<number[]> {
     })
 
     if (!response.ok) {
-      console.error('Failed to fetch favorites:', response.statusText)
-      return []
+      const error = await parseApiError(response)
+      console.error('Failed to fetch favorites:', error.message)
+      return { success: false, error }
     }
 
-    const data: FavoritesResponse = await response.json()
-    return data.data?.jobIds || []
+    const data = await response.json()
+    return { success: true, data: data.data?.jobIds || [] }
   } catch (error) {
     console.error('Failed to fetch favorites:', error)
-    return []
+    return {
+      success: false,
+      error: { message: 'Network error. Please check your connection.', code: 'network_error' },
+    }
   }
 }
 
 export async function addFavorite(
   jobId: number,
   userId: number = 1
-): Promise<{ success: boolean; error?: string }> {
+): Promise<ActionResult<void>> {
   try {
     const response = await fetch(`${BACKEND_URL}/api/favorites`, {
       method: 'POST',
@@ -42,22 +47,25 @@ export async function addFavorite(
     })
 
     if (!response.ok) {
-      const error = await response.json()
-      return { success: false, error: error.error || 'Failed to add favorite' }
+      const error = await parseApiError(response)
+      return { success: false, error }
     }
 
     revalidatePath('/')
-    return { success: true }
+    return { success: true, data: undefined }
   } catch (error) {
     console.error('Failed to add favorite:', error)
-    return { success: false, error: 'Network error' }
+    return {
+      success: false,
+      error: { message: 'Network error. Please try again.', code: 'network_error' },
+    }
   }
 }
 
 export async function removeFavorite(
   jobId: number,
   userId: number = 1
-): Promise<{ success: boolean; error?: string }> {
+): Promise<ActionResult<void>> {
   try {
     const response = await fetch(`${BACKEND_URL}/api/favorites/${jobId}`, {
       method: 'DELETE',
@@ -67,18 +75,18 @@ export async function removeFavorite(
     })
 
     if (!response.ok) {
-      const error = await response.json()
-      return {
-        success: false,
-        error: error.error || 'Failed to remove favorite',
-      }
+      const error = await parseApiError(response)
+      return { success: false, error }
     }
 
     revalidatePath('/')
-    return { success: true }
+    return { success: true, data: undefined }
   } catch (error) {
     console.error('Failed to remove favorite:', error)
-    return { success: false, error: 'Network error' }
+    return {
+      success: false,
+      error: { message: 'Network error. Please try again.', code: 'network_error' },
+    }
   }
 }
 
@@ -86,7 +94,7 @@ export async function toggleFavorite(
   jobId: number,
   currentlyFavorited: boolean,
   userId: number = 1
-): Promise<{ success: boolean; error?: string }> {
+): Promise<ActionResult<void>> {
   if (currentlyFavorited) {
     return removeFavorite(jobId, userId)
   } else {

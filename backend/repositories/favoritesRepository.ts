@@ -1,4 +1,5 @@
 import type { Favorite } from '../types'
+import { DatabaseError } from '../errors/AppError'
 // @ts-expect-error - db.js is not typed
 import db from '../../db/db.js'
 
@@ -18,7 +19,7 @@ export class FavoritesRepository {
         [userId],
         (error: Error | null, rows: Favorite[]) => {
           if (error) {
-            reject(error)
+            reject(new DatabaseError(`Failed to fetch favorites: ${error.message}`))
           } else {
             resolve(rows)
           }
@@ -37,7 +38,7 @@ export class FavoritesRepository {
         [userId, jobId],
         (error: Error | null, row: Favorite | undefined) => {
           if (error) {
-            reject(error)
+            reject(new DatabaseError(`Failed to check favorite: ${error.message}`))
           } else {
             resolve(!!row)
           }
@@ -56,7 +57,7 @@ export class FavoritesRepository {
         [userId, jobId],
         function (this: DbRunResult, error: Error | null) {
           if (error) {
-            reject(error)
+            reject(new DatabaseError(`Failed to add favorite: ${error.message}`))
           } else {
             resolve({
               id: this.lastID,
@@ -80,7 +81,7 @@ export class FavoritesRepository {
         [userId, jobId],
         function (this: DbRunResult, error: Error | null) {
           if (error) {
-            reject(error)
+            reject(new DatabaseError(`Failed to remove favorite: ${error.message}`))
           } else {
             resolve(this.changes > 0)
           }

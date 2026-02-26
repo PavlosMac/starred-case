@@ -317,6 +317,98 @@
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+## Error Handling
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           ERROR HANDLING FLOW                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Backend (Express)                          Frontend (Next.js)              │
+│  ─────────────────                          ──────────────────              │
+│                                                                             │
+│  ┌─────────────────────┐                    ┌─────────────────────────┐    │
+│  │  Route Handler      │                    │  Server Action          │    │
+│  │  throws AppError    │───── HTTP ────────►│  parseApiError()        │    │
+│  └──────────┬──────────┘                    └───────────┬─────────────┘    │
+│             │                                           │                   │
+│             ▼                                           ▼                   │
+│  ┌─────────────────────┐                    ┌─────────────────────────┐    │
+│  │  errorHandler       │                    │  ActionResult<T>        │    │
+│  │  middleware         │                    │  { success, data/error }│    │
+│  └──────────┬──────────┘                    └───────────┬─────────────┘    │
+│             │                                           │                   │
+│             ▼                                           ▼                   │
+│  ┌─────────────────────┐                    ┌─────────────────────────┐    │
+│  │  { error, code }    │                    │  JobsPage.tsx           │    │
+│  │  JSON response      │                    │  error state + ErrorAlert│    │
+│  └─────────────────────┘                    └─────────────────────────┘    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  BACKEND ERROR CLASSES (errors/AppError.ts)
+  ──────────────────────────────────────────
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  AppError (base class)                                                  │
+  │  ├── ValidationError   → 400  (invalid input, missing fields)          │
+  │  ├── NotFoundError     → 404  (resource not found)                     │
+  │  └── DatabaseError     → 500  (SQLite errors)                          │
+  │                                                                         │
+  │  Usage in routes:                                                       │
+  │    throw new ValidationError('Job ID is required')                      │
+  │    throw new NotFoundError('Favorite not found')                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ERROR RESPONSE FORMAT
+  ─────────────────────
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  Success: { data: { ... }, error: {} }                                  │
+  │  Error:   { error: "User-friendly message", code: "error_type" }        │
+  │                                                                         │
+  │  Error codes:                                                           │
+  │    validation_error   - Invalid input                                   │
+  │    not_found          - Resource doesn't exist                          │
+  │    database_error     - Database operation failed                       │
+  │    constraint_error   - SQLite constraint violation                     │
+  │    internal_error     - Unexpected server error                         │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  FRONTEND ERROR HANDLING
+  ───────────────────────
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  ActionResult<T> (types/index.ts)                                       │
+  │  ─────────────────────────────────                                      │
+  │  type ActionResult<T> =                                                 │
+  │    | { success: true; data: T }                                         │
+  │    | { success: false; error: { message: string; code?: string } }      │
+  │                                                                         │
+  │  All server actions return ActionResult<T> for explicit error handling  │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  ErrorAlert Component (components/ErrorAlert.tsx)                       │
+  │  ─────────────────────────────────────────────────                      │
+  │  Props:                                                                 │
+  │    message: string       - Error message to display                     │
+  │    onDismiss?: () => void - Optional dismiss callback                   │
+  │    variant: 'banner' | 'inline'                                         │
+  │                                                                         │
+  │  Renders dismissible error banner with red styling                      │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  JobsPage.tsx Error State                                               │
+  │  ─────────────────────────                                              │
+  │  Single error state: const [error, setError] = useState<string | null>  │
+  │                                                                         │
+  │  Error sources:                                                         │
+  │    • getJobs() failure      → setError(result.error.message)           │
+  │    • searchJobs() failure   → setError(result.error.message)           │
+  │    • toggleFavorite() fail  → rollback + setError(result.error.message)│
+  │    • getFavorites() failure → setError(result.error.message)           │
+  └─────────────────────────────────────────────────────────────────────────┘
+```
+
 ## Docker Compose Setup
 
 ```
@@ -352,6 +444,10 @@ starred-case/
 ├── backend/
 │   ├── bin/www.ts                 # Server entry point
 │   ├── app.ts                     # Express config + middleware
+│   ├── errors/
+│   │   └── AppError.ts            # Custom error classes
+│   ├── middleware/
+│   │   └── errorHandler.ts        # Central error handling
 │   ├── routes/
 │   │   ├── favorites.ts           # /api/favorites endpoints
 │   │   └── users.ts               # /users endpoints
@@ -384,6 +480,7 @@ starred-case/
 │   │   │   ├── Button.tsx         # Reusable button
 │   │   │   ├── InputText.tsx      # Text input with slots
 │   │   │   ├── Checkbox.tsx       # Checkbox component
+│   │   │   ├── ErrorAlert.tsx     # Error display component
 │   │   │   └── icons/
 │   │   │       ├── SearchIcon.tsx
 │   │   │       ├── ClearIcon.tsx
@@ -392,7 +489,8 @@ starred-case/
 │   │   ├── hooks/
 │   │   │   └── useDebounce.ts     # Debounce hook for search
 │   │   ├── lib/
-│   │   │   └── serializers.ts     # snake_case → camelCase
+│   │   │   ├── serializers.ts     # snake_case → camelCase
+│   │   │   └── errorUtils.ts      # API error parsing
 │   │   └── types/
 │   │       └── index.ts           # TypeScript interfaces
 │   ├── Dockerfile

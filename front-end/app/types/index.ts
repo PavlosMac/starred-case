@@ -66,3 +66,11 @@ export type ButtonVariant =
   | 'errorPrimary'
 
 export type ButtonWeight = 'regular' | 'medium' | 'semibold'
+
+/**
+ * Unified result type for Server Actions
+ * Replaces silent failures with explicit success/error states
+ */
+export type ActionResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: { message: string; code?: string } }
