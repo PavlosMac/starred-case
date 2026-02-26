@@ -8,9 +8,12 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci
 
-# Copy backend source and database
+# Copy backend source and database files
 COPY backend/ ./backend/
 COPY db/ ./db/
+
+# Initialize database (create tables + seed data)
+RUN npm run db:reset
 
 EXPOSE 3001
 
