@@ -499,3 +499,37 @@ starred-case/
 ├── Dockerfile.backend             # Backend container
 └── architecture.md                # This document
 ```
+
+## Design Patterns
+
+### Layered Architecture (Backend)
+Separates concerns into Routes → Services → Repositories, where each layer has a single responsibility. Routes handle HTTP, services hold business logic, repositories handle data access.
+- **Example:** `favoritesService.ts` calls `favoritesRepository.create(userId, jobId)` — the service decides *whether* to create, the repository knows *how* to write to SQLite.
+
+### Optimistic Update
+Updates the UI immediately before the server confirms, then rolls back on failure. Gives the user instant feedback without waiting for a network round-trip.
+- **Example:** `handleToggleFavorite` in `JobsPage.tsx` — toggles the star icon instantly via `setFavorites()`, then calls `toggleFavorite()` server action. If the request fails, it reverses the state change.
+
+### Debounce
+Delays execution until user input settles, preventing excessive API calls on every keystroke.
+- **Example:** `useDebounce(searchQuery, 500)` in `JobsPage.tsx` — the search only fires after the user stops typing for 500ms.
+
+### Server Actions (BFF Pattern)
+Next.js server actions act as a Backend-for-Frontend layer, keeping API keys and external URLs off the client and shaping data for the UI.
+- **Example:** `actions/jobs.ts` calls the external AWS API and serializes the response via `serializeJob()` before returning typed `Job[]` to the client.
+
+### Discriminated Union (Result Type)
+Uses a `success` boolean discriminant so TypeScript can narrow the result to either data or error, eliminating unchecked access.
+- **Example:** `ActionResult<T>` in `front-end/app/types/index.ts` — every server action returns `{ success: true, data }` or `{ success: false, error }`.
+
+### Centralised Error Handling
+A single middleware catches all thrown errors and formats them into a consistent response shape, so routes never duplicate error logic.
+- **Example:** `errorHandler` middleware in `backend/middleware/errorHandler.ts` — routes throw `AppError` subclasses and the middleware maps them to `{ error, code }` JSON responses.
+
+### Serializer / Data Transfer Object
+Transforms external API responses (snake_case) into frontend-friendly shapes (camelCase), decoupling the UI from the external contract.
+- **Example:** `serializeJob()` in `front-end/app/lib/serializers.ts` — converts `job_title` → `title`, `company_name` → `company`, etc.
+
+### Composition (Component Tree)
+Small, focused components are composed together rather than building monolithic views. Each component owns one concern.
+- **Example:** `JobCard`, `Pagination`, `InputText`, `Checkbox`, and `UserIndicator` are all independent components composed inside `JobsPage.tsx`.
