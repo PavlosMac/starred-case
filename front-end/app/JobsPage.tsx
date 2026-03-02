@@ -75,9 +75,9 @@ export function JobsPage({
     // Empty query - reset to paginated list
     if (!trimmedQuery) {
       if (isSearchMode) {
-        setIsSearchMode(false)
-        setIsSearching(false)
         startTransition(async () => {
+          setIsSearchMode(false)
+          setIsSearching(false)
           const result = await getJobs(1)
           if (result.success) {
             setJobs(result.data.jobs)
@@ -98,10 +98,11 @@ export function JobsPage({
 
     // Perform search
     latestSearchRef.current = trimmedQuery
-    setIsSearchMode(true)
-    setIsSearching(true)
 
-    const performSearch = async () => {
+    startTransition(async () => {
+      setIsSearchMode(true)
+      setIsSearching(true)
+
       const result = await searchJobs(trimmedQuery)
 
       // Ignore stale results if user typed something else
@@ -118,9 +119,7 @@ export function JobsPage({
         setJobs([])
       }
       setIsSearching(false)
-    }
-
-    performSearch()
+    })
   }, [debouncedSearchQuery, isSearchMode])
 
   const handleSearchInput = useCallback((value: string) => {
