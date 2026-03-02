@@ -533,3 +533,64 @@ Transforms external API responses (snake_case) into frontend-friendly shapes (ca
 ### Composition (Component Tree)
 Small, focused components are composed together rather than building monolithic views. Each component owns one concern.
 - **Example:** `JobCard`, `Pagination`, `InputText`, `Checkbox`, and `UserIndicator` are all independent components composed inside `JobsPage.tsx`.
+
+
+### Debounced Search — Design Breakdown
+
+The search feature is split across four layers, each with a single responsibility:
+
+```
+┌───────────────────────────────────────────────────────────────────────────┐
+│  LAYER             │  FILE                     │  RESPONSIBILITY          │
+├────────────────────┼───────────────────────────┼──────────────────────────┤
+│  Component         │  InputText.tsx             │  Generic text input      │
+│                    │                            │  with pre/post icon slots│
+│  Hook              │  useDebounce.ts            │  Generic timing logic    │
+│  Orchestration     │  JobsPage.tsx              │  Wires input → debounce  │
+│                    │                            │  → search → UI state     │
+│  Data fetching     │  actions/jobs.ts           │  Server-side API calls   │
+│                    │                            │  + serialization         │
+└───────────────────────────────────────────────────────────────────────────┘
+```
+
+**How the pieces connect:**
+
+```
+  User types          searchQuery updates        debouncedSearchQuery fires
+  ───────────►  InputText  ───────────►  useDebounce(500ms)  ───────────►  useEffect
+                                                                              │
+                 ┌────────────────────────────────────────────────────────────┘
+                 │
+                 ▼
+          latestSearchRef = query          ◄── tracks latest to discard stale results
+                 │
+                 ▼
+          searchJobs(query)                ◄── server action (runs on Next.js server)
+          ├── POST /jobs/recommendations   ◄── external AWS API
+          ├── GET  /jobs/{id} × N          ◄── fetch each result (max 20)
+          └── serializeJob()               ◄── snake_case → camelCase
+                 │
+                 ▼
+          setJobs(results)                 ◄── update UI
+```
+
+**Key design decisions:**
+
+1. **Separation of concerns** — `InputText` is a generic reusable component (knows nothing about search). `useDebounce` is a generic timing hook (knows nothing about inputs). Neither is coupled to the search feature.
+
+2. **Debounce prevents wasted requests** — Raw keystrokes update `searchQuery` instantly so the input stays responsive, but the API call only fires after 500ms of inactivity via `debouncedSearchQuery`.
+
+3. **Race condition guard** — `latestSearchRef` tracks the most recent query string. When a response arrives, `if (latestSearchRef.current !== trimmedQuery)` discards stale results so a slow early request can't overwrite a fast later one.
+
+4. **Minimum character threshold** — `MIN_SEARCH_LENGTH = 2` avoids firing overly broad single-character searches.
+
+5. **Loading feedback via icon slots** — `isSearching` swaps the `preIcon` from `SearchIcon` to `Spinner`, giving instant visual feedback. The `postIcon` slot shows `ClearIcon` when the input has text. This uses `InputText`'s slot API rather than search-specific logic.
+
+6. **Server-side data fetching (BFF)** — The AWS API URL and the two-step fetch (IDs → jobs) are hidden inside a `'use server'` action. The client only sees `searchJobs(query) → ActionResult<Job[]>`.
+
+7. **Graceful degradation** — Every step returns `ActionResult<T>`. If the recommendations API fails, the user gets an error message. If individual job fetches fail, `getJobsByIds` returns whatever it could fetch rather than failing entirely.
+
+
+**Promise.all** rejects immediately and you lose the results from every other
+   promise, even the ones that succeeded. We mitigate this because getJobById catches its own errors and returns { success: false, error }       
+  instead of throwing, so Promise.all never actually rejects — but that's a design choice we had to make deliberately. 
