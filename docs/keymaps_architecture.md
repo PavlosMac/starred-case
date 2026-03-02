@@ -314,80 +314,6 @@ Clean architecture: Router → Service → Repository layers
 │  │                                                                            ││
 │  └────────────────────────────────────────────────────────────────────────────┘│
 │                                                                                 │
-│  Benefits:                                                                      │
-│  • No re-translation on cache hit (~99% of requests)                           │
-│  • Single invalidation clears all language variants                            │
-│  • Cache stores fully resolved response (ready to return)                      │
-│  • Language isolated: Swedish user's change doesn't affect English cache       │
-│    for same user                                                               │
-│                                                                                 │
-└─────────────────────────────────────────────────────────────────────────────────┘
-```
-
-### 6. Data Flow Summary
-
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                           COMPLETE DATA FLOW                                    │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                 │
-│   READ PATH (GET)                        WRITE PATH (PATCH/DELETE)              │
-│   ═══════════════                        ════════════════════════               │
-│                                                                                 │
-│   ┌─────────┐                            ┌─────────┐                           │
-│   │ Request │                            │ Request │                           │
-│   └────┬────┘                            └────┬────┘                           │
-│        │                                      │                                 │
-│        ▼                                      ▼                                 │
-│   ┌─────────────┐                        ┌─────────────┐                       │
-│   │Check Cache  │                        │ Validate    │                       │
-│   │user:id:     │                        │ Input       │                       │
-│   │keymap:lang  │                        │             │                       │
-│   └──────┬──────┘                        └──────┬──────┘                       │
-│      HIT │ MISS                                 │                               │
-│    ┌─────┴─────┐                                ▼                               │
-│    │           │                         ┌─────────────┐                       │
-│    ▼           ▼                         │LAYER 1 MERGE│                       │
-│ ┌──────┐ ┌──────────┐                    │ (User DB)   │                       │
-│ │Return│ │Fetch from│                    │             │                       │
-│ │cached│ │ MongoDB  │                    │ Existing +  │                       │
-│ └──────┘ │          │                    │ Incoming =  │                       │
-│          │ • system │                    │ Merged      │                       │
-│          │ • user   │                    └──────┬──────┘                       │
-│          │ • species│                           │                               │
-│          └────┬─────┘                           ▼                               │
-│               │                          ┌─────────────┐                       │
-│               ▼                          │Atomic Upsert│                       │
-│        ┌─────────────┐                   │ MongoDB     │                       │
-│        │LAYER 2 MERGE│                   └──────┬──────┘                       │
-│        │(Read-time)  │                          │                               │
-│        │             │                          ▼                               │
-│        │ System +    │                   ┌─────────────┐                       │
-│        │ User =      │                   │ Invalidate  │                       │
-│        │ Resolved    │                   │ Cache       │                       │
-│        │             │                   │ user:id:    │                       │
-│        │ + source    │                   │ keymap:*    │                       │
-│        │ + unmapped  │                   └──────┬──────┘                       │
-│        └──────┬──────┘                          │                               │
-│               │                                 ▼                               │
-│               ▼                          ┌─────────────┐                       │
-│        ┌─────────────┐                   │ 204 No      │                       │
-│        │Enrich with  │                   │ Content     │                       │
-│        │translations │                   └─────────────┘                       │
-│        └──────┬──────┘                                                         │
-│               │                                                                 │
-│               ▼                                                                 │
-│        ┌─────────────┐                                                         │
-│        │Cache Result │                                                         │
-│        │TTL: 8 days  │                                                         │
-│        └──────┬──────┘                                                         │
-│               │                                                                 │
-│               ▼                                                                 │
-│        ┌─────────────┐                                                         │
-│        │ 200 OK      │                                                         │
-│        │ Response    │                                                         │
-│        └─────────────┘                                                         │
-│                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -397,7 +323,7 @@ Clean architecture: Router → Service → Repository layers
 
 ### Layer 1: User-Level Merge (on PATCH)
 
-When a user updates their keymap, incoming mappings are **merged** with existing user mappings:
+When a user updates their keymap, incoming mappings are **merged** with existing user mappings. Sequential PATCHes **accumulate**:
 
 - New keys → Added
 - Existing keys → Updated (preserves `created_at`)
@@ -406,11 +332,10 @@ When a user updates their keymap, incoming mappings are **merged** with existing
 **Location**: `update_user_keymaps()` in `keymap_profiles_service.py`
 
 ```
-Existing User DB: [{"key": "1", "func": "add_comment"}]
-Incoming PATCH:   [{"key": "2", "func": "validate"}]
-                         ↓ User-Level Merge
-Result (stored):  [{"key": "1", "func": "add_comment"},
-                   {"key": "2", "func": "validate"}]
+State: []
+PATCH [{"key": "1", "func": "add_comment"}]    → Result: ["1"]
+PATCH [{"key": "2", "func": "validate"}]       → Result: ["1", "2"]  ← Merged!
+PATCH [{"key": "1", "func": "set_size"}]       → Result: ["1"*, "2"] ← Updated!
 ```
 
 ### Layer 2: System-Level Merge (on GET)
@@ -419,7 +344,7 @@ At read-time, system defaults are merged with user overrides:
 
 - User mappings **win** over system defaults for the same key
 - System functions that lose their key go into `unmapped_functions`
-- Each mapping gets a `source` field: `"system"`, `"user_override"`, or `"user_custom"`
+- Each mapping gets a `source` field (see [Source Field Determination](#4-source-field-determination-logic) diagram)
 
 **Location**: `_merge_keymaps()` in `keymap_profiles_service.py`
 
@@ -482,19 +407,7 @@ Unmapped:         [{"key": "1", "func": "set_species"}]  ← Lost its key
 
 ### Redis Cache
 
-The `KeymapCache` class (`cache_manager.py`) handles caching with language-specific keys.
-
-#### Cache Key Structure
-```
-user:{user_id}:keymap:{language}
-```
-Example: `user:68494ed7384ec13e00b23456:keymap:sv`
-
-#### Configuration
-- **TTL**: 691,200 seconds (8 days)
-- **Version**: `v3` (bumped when cache structure changes)
-
-#### Cache Operations
+The `KeymapCache` class (`cache_manager.py`) handles caching with language-specific keys. See [Caching Strategy diagram](#5-language-aware-caching-strategy-i18n) for full details.
 
 | Method | When Called | What It Does |
 |--------|-------------|--------------|
@@ -502,81 +415,13 @@ Example: `user:68494ed7384ec13e00b23456:keymap:sv`
 | `set_user_keymap(user_id, lang, data)` | After cache miss | Stores fully resolved keymap with 8-day TTL |
 | `invalidate_user_keymap(user_id)` | On PATCH/DELETE | Deletes **all language caches** for user |
 
-#### Cache Flow
+Cache key format: `user:{user_id}:keymap:{language}` (e.g. `user:68494ed7384ec13e00b23456:keymap:sv`)
 
-```
-GET /users/{id}/keymap
-    │
-    ├─► Check Redis: user:{id}:keymap:{lang}
-    │
-    ├─► Cache HIT ──► Return cached ResolvedKeymapResponse
-    │
-    └─► Cache MISS
-            │
-            ├─► Fetch system defaults from MongoDB
-            ├─► Fetch user overrides from MongoDB
-            ├─► Merge (Layer 2)
-            ├─► Enrich with translations
-            ├─► Store in Redis (TTL: 8 days)
-            └─► Return response
-```
-
-#### Why Per-Language Caching?
-
-Species mappings have translated `display_name` values. A Swedish user sees `"Lax"` while an English user sees `"Salmon"`. The cache stores the **fully resolved** response including translations, so each language needs its own cache entry.
-
-#### Invalidation
-
-On PATCH or DELETE, **all** language caches for the user are invalidated:
-
-```python
-pattern = f"user:{user_id}:keymap:*"  # Matches all languages
-keys_to_delete = await RedisClient.scan_keys(pattern)
-await RedisClient.delete_many(keys_to_delete)
-```
+Configuration: TTL 691,200s (8 days), version `v3` (bumped when cache structure changes).
 
 ## Key Behaviors
 
-### 1. PATCH Accumulates
-
-Sequential PATCH requests **accumulate** mappings:
-```
-State: []
-PATCH [{"key": "1", "func": "add_comment"}]    → Result: ["1"]
-PATCH [{"key": "2", "func": "validate"}]       → Result: ["1", "2"]  ← Merged!
-PATCH [{"key": "1", "func": "set_size"}]       → Result: ["1"*, "2"] ← Updated!
-```
-
-### 2. Source Field Logic
-
-Each mapping in `resolved_mappings` includes a `source` field:
-
-| Source | Meaning | Frontend Action |
-|--------|---------|-----------------|
-| `system` | Mapping matches system default exactly (key + function + params) | No action button needed |
-| `user_override` | User changed a key that exists in system defaults | Show "reset to default" button |
-| `user_custom` | User added a key not in system defaults | Show "delete" button |
-
-**Examples:**
-
-```
-# system - exact match with system default
-System: {"key": "1", "func": "set_species", "params": {"species_id": "123"}}
-User:   {"key": "1", "func": "set_species", "params": {"species_id": "123"}}
-Result: source = "system"
-
-# user_override - same key, different function/params
-System: {"key": "1", "func": "set_species", "params": {"species_id": "123"}}
-User:   {"key": "1", "func": "set_species", "params": {"species_id": "456"}}
-Result: source = "user_override"
-
-# user_custom - key doesn't exist in system
-System: (no key "888")
-User:   {"key": "888", "func": "validate", "params": {}}
-Result: source = "user_custom"
-```
-
-### 3. Unique Function Enforcement
+### 1. Unique Function Enforcement
 
 Same function can't map to multiple keys. If user maps same function to new key, old key is removed:
 ```
@@ -585,9 +430,9 @@ User:   {"key": "q", "func": "set_species", "params": {"id": "123"}}
 Result: Only "q" has set_species(123), "1" is freed
 ```
 
-### 4. Unmapped Functions
+### 2. Unmapped Functions
 
-System functions that **lost their keys** due to user overrides:
+System functions that **lost their keys** due to user overrides appear in `unmapped_functions`:
 ```
 System: "k" → add_comment, "1" → set_species(Salmon)
 User:   "1" → add_comment
@@ -598,18 +443,10 @@ Result:
 
 Frontend can display these for user to reassign.
 
-### 5. Atomic Operations
+### 3. Species Enrichment
 
-Uses `find_one_and_update` with `upsert=True` to prevent race conditions with concurrent PATCH requests.
-
-### 6. Species Enrichment
-
-Species mappings get translated `display_name` based on user's language preference:
+Species mappings get translated `display_name` based on user's language preference (see [species collection structure](#5-language-aware-caching-strategy-i18n)):
 ```js
-// From species collection
-{species_id: "123", keynum: 1, name: "Salmon",
- translations: {en: "Salmon", sv: "Lax", no: "Laks"}}
-
 // Becomes (for Swedish user)
 {key: "1", func: "set_species", params: {species_id: "123",
          species_name: "Salmon", display_name: "Lax"}}
